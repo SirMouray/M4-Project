@@ -5,7 +5,7 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private Transform target;         
+    [SerializeField] private Transform target;
     [SerializeField] private Transform cameraTransform;
 
     [Header("Mouse Settings")]
@@ -15,6 +15,12 @@ public class CameraController : MonoBehaviour
 
     [Header("Offsets")]
     [SerializeField] private Vector3 shoulderOffset = new Vector3(0.6f, 1.8f, -3f);
+
+    [Header("Collision Settings")]
+    [SerializeField] private LayerMask collisionMask;   // Imposta "Map"
+    [SerializeField] private float sphereRadius = 0.3f; // Raggio della camera
+    [SerializeField] private float collisionOffset = 0.2f;
+    [SerializeField] private float minDistance = 0.5f;
 
     private float _verticalRotation;
     private float _horizontalRotation;
@@ -32,9 +38,45 @@ public class CameraController : MonoBehaviour
 
     private void FollowTarget()
     {
+        // Posizione pivot (spalle player)
         transform.position = target.position;
-        cameraTransform.localPosition = shoulderOffset;
+
+        // Posizione desiderata camera (world space)
+        Vector3 desiredWorldPos = transform.TransformPoint(shoulderOffset);
+
+        // Direzione verso la camera
+        Vector3 direction = desiredWorldPos - target.position;
+        float distance = direction.magnitude;
+
+        RaycastHit hit;
+
+        // SphereCast per evitare compenetrazione
+        if (Physics.SphereCast(
+            target.position,
+            sphereRadius,
+            direction.normalized,
+            out hit,
+            distance,
+            collisionMask))
+        {
+            float adjustedDistance = Mathf.Clamp(
+                hit.distance - collisionOffset,
+                minDistance,
+                distance
+            );
+
+            cameraTransform.localPosition = new Vector3(
+                shoulderOffset.x,
+                shoulderOffset.y,
+                -adjustedDistance
+            );
+        }
+        else
+        {
+            cameraTransform.localPosition = shoulderOffset;
+        }
     }
+
 
     private void HandleRotation()
     {
